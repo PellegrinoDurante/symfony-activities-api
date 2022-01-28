@@ -1,12 +1,12 @@
 doctrine:
     dbal:
-        dbname: '%env(DATABASE_NAME)%'
-        host: '%env(DATABASE_HOST)%'
-        port: '%env(DATABASE_PORT)%'
-        user: '%env(DATABASE_USER)%'
-        password: '%env(DATABASE_PASSWORD)%'
-        driver: '%env(DATABASE_DRIVER)%'
-        server_version: '%env(DATABASE_VERSION)%'
+        dbname: '%env(DB_NAME)%'
+        host: '%env(DB_HOST)%'
+        port: '%env(DB_PORT)%'
+        user: '%env(DB_USER)%'
+        password: '%env(DB_PASSWORD)%'
+        driver: '%env(DB_DRIVER)%'
+        server_version: '%env(DB_VERSION)%'
 
     orm:
         auto_generate_proxy_classes: true

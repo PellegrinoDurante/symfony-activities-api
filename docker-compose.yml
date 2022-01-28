@@ -3,11 +3,14 @@ services:
   database:
     image: mysql:5.7
     environment:
-      - MYSQL_USER=${DATABASE_USER}
-      - MYSQL_PASSWORD=${DATABASE_PASSWORD}
-      - MYSQL_DATABASE=${DATABASE_NAME}
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
     volumes:
       - data:/var/lib/mysql
+    ports:
+      - "${DB_PORT}:3306"
 
 volumes:
   data:
