@@ -8,6 +8,7 @@ use App\Repository\ActivityRepository;
 use App\Service\ObjectSerializer;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use JetBrains\PhpStorm\ArrayShape;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,11 +28,17 @@ class ActivityController extends BaseController
     /**
      * @Route("/activities", methods={"GET"}, name="activities_list")
      */
-    public function listActivities(): JsonResponse
+    public function listActivities(Request $request): JsonResponse
     {
         try {
-            // Get all activities
-            $activityEntities = $this->activityRepository->findAll();
+            $filters = $this->getFilters($request);
+
+            // Get all activities by filters
+            $activityEntities = $this->activityRepository->findAllByFilter(
+                $filters['name'],
+                $filters['day'],
+                $filters['availableOnly'],
+            );
 
             // Build and return response
             $activities = $this->serializer->normalize($activityEntities);
@@ -147,6 +154,24 @@ class ActivityController extends BaseController
         } catch (Throwable $e) {
             return $this->buildResponse(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
         }
+    }
+
+    #[ArrayShape(['name' => "string|null", 'day' => "DateTime|null", 'availableOnly' => "bool"])]
+    private function getFilters(Request $request): array
+    {
+        $query = $request->query;
+
+        $name = $query->get('name');
+        $day = $query->get('day') != null
+            ? DateTime::createFromFormat('Y-m-d', $query->get('day'))
+            : null;
+        $availableOnly = $query->getBoolean('availableOnly');
+
+        return [
+            'name' => $name,
+            'day' => $day,
+            'availableOnly' => $availableOnly,
+        ];
     }
 
     /**
