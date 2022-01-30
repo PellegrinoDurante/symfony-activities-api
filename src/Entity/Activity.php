@@ -9,40 +9,76 @@ use DateTimeInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\ORM\Mapping\Entity;
 use JetBrains\PhpStorm\Pure;
+use Symfony\Component\Serializer\Annotation\Groups;
 
-#[ORM\Entity(repositoryClass: ActivityRepository::class)]
+/**
+ * @Entity(repositoryClass=ActivityRepository::class)
+ */
 class Activity
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: "integer")]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"activity"})
+     */
     private ?int $id;
 
-    #[ORM\Column(type: "string", length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"activity"})
+     */
     private ?string $name;
 
-    #[ORM\Column(type: "string", length: 255)]
+    /**
+     * @ORM\Column(type="string", length=255)
+     * @Groups({"activity"})
+     */
     private ?string $location;
 
-    #[ORM\Column(type: "datetime")]
+    /**
+     * @ORM\Column(type="datetime")
+     * @Groups({"activity"})
+     */
     private ?DateTimeInterface $startAt;
 
-    #[ORM\Column(type: "datetime")]
+    /**
+     * @ORM\Column(type="datetime")
+     * @Groups({"activity"})
+     */
     private ?DateTimeInterface $endAt;
 
-    #[ORM\Column(type: "integer")]
+    /**
+     * @ORM\Column(type="integer")
+     * @Groups({"activity"})
+     */
     private ?int $availableSeats;
 
-    #[ORM\Column(type: "integer")]
-    private ?int $occupiedSeats;
+    /**
+     * @ORM\Column(type="integer")
+     * @Groups({"activity"})
+     */
+    private ?int $occupiedSeats = 0;
 
-    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: "activities")]
+    /**
+     * @ORM\ManyToMany(targetEntity=User::class)
+     * @Groups({"activity"})
+     */
     private Collection $users;
 
-    #[Pure] public function __construct()
+    /**
+     * @ORM\ManyToMany(targetEntity=Category::class, mappedBy="activities")
+     * @Groups({"activity"})
+     */
+    private Collection $categories;
+
+    #[Pure]
+    public function __construct()
     {
         $this->users = new ArrayCollection();
+        $this->categories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -170,5 +206,29 @@ class Activity
     public function hasAvailableSeats(): bool
     {
         return $this->getAvailableSeats() > $this->getOccupiedSeats();
+    }
+
+    /**
+     * @return Collection|Category[]
+     */
+    public function getCategories(): Collection|array
+    {
+        return $this->categories;
+    }
+
+    public function addCategory(Category $category): self
+    {
+        if (!$this->categories->contains($category)) {
+            $this->categories[] = $category;
+            $category->addActivity($this);
+        }
+
+        return $this;
+    }
+
+    public function removeCategory(Category $category): self
+    {
+        $this->categories->removeElement($category);
+        return $this;
     }
 }

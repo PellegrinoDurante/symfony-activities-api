@@ -4,25 +4,41 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\ORM\Mapping\Entity;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 
-#[ORM\Entity(repositoryClass: UserRepository::class)]
+/**
+ * @Entity(repositoryClass=UserRepository::class)
+ */
 class User implements UserInterface
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: "integer")]
+    /**
+     * @ORM\Id
+     * @ORM\GeneratedValue
+     * @ORM\Column(type="integer")
+     * @Groups({"user"})
+     */
     private ?int $id;
 
-    #[ORM\Column(type: "string", length: 180, unique: true)]
+    /**
+     * @ORM\Column(type="string", length=180, unique=true)
+     * @Groups({"user"})
+     */
     private ?string $email;
 
     // DEV-NOTE: Per semplicità aggiungo il token qui senza logiche di scadenza o altro. Una soluzione migliore sarebbe
     // quella di gestire in un'altra entità i token, collegati poi all'utente.
-    #[ORM\Column(type: "string", length: 128, unique: true)]
+    /**
+     * @ORM\Column(type="string", length=128, unique=true)
+     * @Groups({"user"})
+     */
     private ?string $token;
 
-    #[ORM\Column(type: "json")]
+    /**
+     * @ORM\Column(type="json")
+     * @Groups({"user"})
+     */
     private array $roles = [];
 
     public function getId(): ?int

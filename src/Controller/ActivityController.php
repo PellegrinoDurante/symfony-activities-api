@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Activity;
+use App\Exception\InvalidFieldException;
 use App\Model\DataObject;
 use App\Repository\ActivityRepository;
+use App\Repository\CategoryRepository;
 use App\Service\ObjectSerializer;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,6 +22,7 @@ class ActivityController extends BaseController
 {
     public function __construct(
         private ActivityRepository     $activityRepository,
+        private CategoryRepository     $categoryRepository,
         private EntityManagerInterface $entityManager,
         private ObjectSerializer       $serializer,
     )
@@ -42,7 +45,10 @@ class ActivityController extends BaseController
             );
 
             // Build and return response
-            $activities = $this->serializer->normalize($activityEntities, null, [AbstractNormalizer::IGNORED_ATTRIBUTES => ['users']]);
+            $activities = $this->serializer->normalize($activityEntities, null, [
+                AbstractNormalizer::GROUPS => 'activity',
+                AbstractNormalizer::IGNORED_ATTRIBUTES => ['users'],
+            ]);
             $message = sprintf('Found %d activities', count($activities));
             return $this->buildResponse(Response::HTTP_OK, $message, $activities);
 
@@ -52,21 +58,24 @@ class ActivityController extends BaseController
     }
 
     /**
-     * @Route("/activities/{id}", methods={"GET"}, name="activities_get")
+     * @Route("/activities/{id}", methods={"GET"}, name="activities_get", requirements={"id"="\d+"})
      */
     public function getActivity(int $id): JsonResponse
     {
         try {
             // Search the activity by ID; throws an exception if not found
             $activityEntity = $this->activityRepository->find($id)
-                ?? throw new EntityNotFoundException();
+                ?? throw new EntityNotFoundException('Activity not found');
 
             // Activity found
-            $activity = $this->serializer->normalize($activityEntity, null, [AbstractNormalizer::IGNORED_ATTRIBUTES => ['users']]);
+            $activity = $this->serializer->normalize($activityEntity, null, [
+                AbstractNormalizer::GROUPS => 'activity',
+                AbstractNormalizer::IGNORED_ATTRIBUTES => ['users'],
+            ]);
             return $this->buildResponse(Response::HTTP_OK, 'Activity found', $activity);
 
-        } catch (EntityNotFoundException) {
-            return $this->buildResponse(Response::HTTP_NOT_FOUND, 'Activity not found');
+        } catch (EntityNotFoundException $e) {
+            return $this->buildResponse(Response::HTTP_NOT_FOUND, $e->getMessage());
 
         } catch (Throwable $e) {
             return $this->buildResponse(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
@@ -102,7 +111,7 @@ class ActivityController extends BaseController
     }
 
     /**
-     * @Route("/activities/{id}", methods={"PUT"}, name="activities_edit")
+     * @Route("/activities/{id}", methods={"PUT"}, name="activities_edit", requirements={"id"="\d+"})
      */
     public function editActivity(int $id, Request $request): JsonResponse
     {
@@ -112,7 +121,7 @@ class ActivityController extends BaseController
 
             // Search the activity by ID; throws an exception if not found
             $activity = $this->activityRepository->find($id)
-                ?? throw new EntityNotFoundException();
+                ?? throw new EntityNotFoundException('Activity not found');
 
             // Update the activity
             $this->fillActivityWithData($activity, $data);
@@ -124,8 +133,8 @@ class ActivityController extends BaseController
         } catch (InvalidRequestBodyException | MissingRequiredFieldException $e) {
             return $this->buildResponse(Response::HTTP_BAD_REQUEST, $e->getMessage());
 
-        } catch (EntityNotFoundException) {
-            return $this->buildResponse(Response::HTTP_NOT_FOUND, 'Activity not found');
+        } catch (EntityNotFoundException $e) {
+            return $this->buildResponse(Response::HTTP_NOT_FOUND, $e->getMessage());
 
         } catch (Throwable $e) {
             return $this->buildResponse(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
@@ -133,14 +142,14 @@ class ActivityController extends BaseController
     }
 
     /**
-     * @Route("/activities/{id}", methods={"DELETE"}, name="activities_delete")
+     * @Route("/activities/{id}", methods={"DELETE"}, name="activities_delete", requirements={"id"="\d+"})
      */
     public function deleteActivity(int $id): JsonResponse
     {
         try {
             // Search the activity by ID; throws an exception if not found
             $activity = $this->activityRepository->find($id)
-                ?? throw new EntityNotFoundException();
+                ?? throw new EntityNotFoundException('Activity not found');
 
             // Delete the activity
             $this->entityManager->remove($activity);
@@ -149,8 +158,8 @@ class ActivityController extends BaseController
             // Build and return response
             return $this->buildResponse(Response::HTTP_OK, 'Activity deleted');
 
-        } catch (EntityNotFoundException) {
-            return $this->buildResponse(Response::HTTP_NOT_FOUND, 'Activity not found');
+        } catch (EntityNotFoundException $e) {
+            return $this->buildResponse(Response::HTTP_NOT_FOUND, $e->getMessage());
 
         } catch (Throwable $e) {
             return $this->buildResponse(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
@@ -179,6 +188,8 @@ class ActivityController extends BaseController
      * @param Activity $activity
      * @param DataObject $data
      * @throws MissingRequiredFieldException
+     * @throws EntityNotFoundException
+     * @throws InvalidFieldException
      */
     private function fillActivityWithData(Activity $activity, DataObject $data)
     {
@@ -187,6 +198,20 @@ class ActivityController extends BaseController
         $activity->setStartAt(DateTime::createFromFormat(DATE_ATOM, $data->getRequired('startAt')));
         $activity->setEndAt(DateTime::createFromFormat(DATE_ATOM, $data->getRequired('endAt')));
         $activity->setAvailableSeats($data->getRequired('availableSeats'));
-        $activity->setOccupiedSeats($data->getRequired('occupiedSeats'));
+
+        // Add categories to activity
+        $categories = $data->getRequired('categories');
+
+        if (!is_array($categories)) {
+            throw new InvalidFieldException('Field `categories` should be an array of integer ID');
+        }
+
+        foreach ($categories as $category) {
+            // Finds category entity and adds it to the activity
+            $categoryEntity = $this->categoryRepository->find($category)
+                ?? throw new EntityNotFoundException('Category not found with ID: ' . $category);
+
+            $activity->addCategory($categoryEntity);
+        }
     }
 }
