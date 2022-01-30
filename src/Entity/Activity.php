@@ -2,9 +2,14 @@
 
 namespace App\Entity;
 
+use App\Controller\NoAvailableSeatsLeftException;
+use App\Controller\UserAlreadyHasSeatException;
 use App\Repository\ActivityRepository;
 use DateTimeInterface;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use JetBrains\PhpStorm\Pure;
 
 #[ORM\Entity(repositoryClass: ActivityRepository::class)]
 class Activity
@@ -31,6 +36,14 @@ class Activity
 
     #[ORM\Column(type: "integer")]
     private ?int $occupiedSeats;
+
+    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: "activities")]
+    private Collection $users;
+
+    #[Pure] public function __construct()
+    {
+        $this->users = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -107,5 +120,55 @@ class Activity
     {
         $this->occupiedSeats = $occupiedSeats;
         return $this;
+    }
+
+    /**
+     * @return Collection|User[]
+     */
+    public function getUsers(): Collection|array
+    {
+        return $this->users;
+    }
+
+    /**
+     * @param User $user
+     * @return Activity
+     * @throws NoAvailableSeatsLeftException
+     * @throws UserAlreadyHasSeatException
+     */
+    public function joinUser(User $user): self
+    {
+        if ($this->users->contains($user)) {
+            throw new UserAlreadyHasSeatException();
+        }
+
+        if (!$this->hasAvailableSeats()) {
+            throw new NoAvailableSeatsLeftException();
+        }
+
+        $this->users->add($user);
+        $this->setOccupiedSeats($this->getOccupiedSeats() + 1);
+        return $this;
+    }
+
+    /**
+     * @param User $user
+     * @return Activity
+     */
+    public function leaveUser(User $user): self
+    {
+        $removed = $this->users->removeElement($user);
+
+        if ($removed) {
+            $this->setOccupiedSeats($this->getOccupiedSeats() - 1);
+        }
+
+        return $this;
+    }
+
+    #[Pure]
+    public function hasAvailableSeats(): bool
+    {
+        return $this->getAvailableSeats() > $this->getOccupiedSeats();
     }
 }

@@ -3,8 +3,12 @@
 namespace App\Repository;
 
 use App\Entity\Activity;
+use App\Entity\User;
 use DateTime;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\NoResultException;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -52,14 +56,52 @@ class ActivityRepository extends ServiceEntityRepository
 
         // Apply available filter
         if ($availableOnly != null) {
-            $now = new DateTime();
-            $qb = $qb
-                ->andWhere('a.availableSeats > a.occupiedSeats')
-                ->andWhere('a.endAt > :now')
-                ->setParameter('now', $now);
+            $qb = $this->andWhereIsAvailable($qb);
         }
 
         // Get results
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @param int $id
+     * @return Activity|null
+     * @throws NonUniqueResultException
+     */
+    public function findAvailable(int $id): ?Activity
+    {
+        try {
+            $qb = $this->createQueryBuilder('a')
+                ->where('a.id = :id')
+                ->setParameter('id', $id);
+
+            return $this->andWhereIsAvailable($qb)
+                ->getQuery()
+                ->getSingleResult();
+
+        } catch (NoResultException $e) {
+            return null;
+        }
+    }
+
+    public function findActivitiesByUser(User $user)
+    {
+        return $this->createQueryBuilder('a')
+            ->innerJoin('a.users', 'u')
+            ->where('u = :user')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
+    }
+
+    private function andWhereIsAvailable(QueryBuilder $qb): QueryBuilder
+    {
+        $now = new DateTime();
+
+        return $qb
+            ->andWhere('a.availableSeats > a.occupiedSeats')
+            ->andWhere('a.endAt > :now')
+            ->setParameter('now', $now);
+
     }
 }

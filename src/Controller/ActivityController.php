@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Throwable;
 
 class ActivityController extends BaseController
@@ -41,7 +42,7 @@ class ActivityController extends BaseController
             );
 
             // Build and return response
-            $activities = $this->serializer->normalize($activityEntities);
+            $activities = $this->serializer->normalize($activityEntities, null, [AbstractNormalizer::IGNORED_ATTRIBUTES => ['users']]);
             $message = sprintf('Found %d activities', count($activities));
             return $this->buildResponse(Response::HTTP_OK, $message, $activities);
 
@@ -61,7 +62,7 @@ class ActivityController extends BaseController
                 ?? throw new EntityNotFoundException();
 
             // Activity found
-            $activity = $this->serializer->normalize($activityEntity);
+            $activity = $this->serializer->normalize($activityEntity, null, [AbstractNormalizer::IGNORED_ATTRIBUTES => ['users']]);
             return $this->buildResponse(Response::HTTP_OK, 'Activity found', $activity);
 
         } catch (EntityNotFoundException) {
