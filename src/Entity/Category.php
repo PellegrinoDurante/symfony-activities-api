@@ -30,7 +30,7 @@ class Category
     private ?string $name;
 
     /**
-     * @ORM\ManyToMany(targetEntity=Activity::class, inversedBy="categories")
+     * @ORM\ManyToMany(targetEntity=Activity::class, mappedBy="categories")
      * @Groups({"category"})
      */
     private Collection $activities;
@@ -79,6 +79,7 @@ class Category
     {
         if (!$this->activities->contains($activity)) {
             $this->activities[] = $activity;
+            $activity->addCategory($this);
         }
 
         return $this;
@@ -87,6 +88,7 @@ class Category
     public function removeActivity(Activity $activity): self
     {
         $this->activities->removeElement($activity);
+        $activity->removeCategory($this);
         return $this;
     }
 }

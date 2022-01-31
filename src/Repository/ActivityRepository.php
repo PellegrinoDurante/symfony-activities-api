@@ -16,6 +16,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method Activity|null findOneBy(array $criteria, array $orderBy = null)
  * @method Activity[]    findAll()
  * @method Activity[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @method findByMedia($null)
  */
 class ActivityRepository extends ServiceEntityRepository
 {

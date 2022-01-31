@@ -5,8 +5,10 @@ namespace App\Controller;
 use App\Entity\Activity;
 use App\Exception\InvalidFieldException;
 use App\Model\DataObject;
+use App\Repository\ActivityImageRepository;
 use App\Repository\ActivityRepository;
 use App\Repository\CategoryRepository;
+use App\Service\ActivityMediaService;
 use App\Service\ObjectSerializer;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,10 +23,12 @@ use Throwable;
 class ActivityController extends BaseController
 {
     public function __construct(
-        private ActivityRepository     $activityRepository,
-        private CategoryRepository     $categoryRepository,
-        private EntityManagerInterface $entityManager,
-        private ObjectSerializer       $serializer,
+        private ActivityRepository      $activityRepository,
+        private CategoryRepository      $categoryRepository,
+        private ActivityImageRepository $activityImageRepository,
+        private EntityManagerInterface  $entityManager,
+        private ObjectSerializer        $serializer,
+        private ActivityMediaService    $activityMediaService,
     )
     {
     }
@@ -199,12 +203,43 @@ class ActivityController extends BaseController
         $activity->setEndAt(DateTime::createFromFormat(DATE_ATOM, $data->getRequired('endAt')));
         $activity->setAvailableSeats($data->getRequired('availableSeats'));
 
+        // If media is set, link activity to the media
+        $media = $data->get('media');
+        if ($media != null) {
+            $this->handleSetMedia($activity, $media);
+        }
+
         // Add categories to activity
         $categories = $data->getRequired('categories');
-
         if (!is_array($categories)) {
             throw new InvalidFieldException('Field `categories` should be an array of integer ID');
         }
+
+        $this->handleSetCategories($activity, $categories);
+    }
+
+    /**
+     * @param Activity $activity
+     * @param int $media
+     * @throws EntityNotFoundException
+     */
+    private function handleSetMedia(Activity $activity, int $media)
+    {
+        // Get activity media
+        $activityMedia = $this->activityImageRepository->find($media)
+            ?? throw new EntityNotFoundException('Media not found with ID: ' . $media);
+
+        $activity->setMedia($activityMedia);
+    }
+
+    /**
+     * @param Activity $activity
+     * @param array $categories
+     * @throws EntityNotFoundException
+     */
+    private function handleSetCategories(Activity $activity, array $categories)
+    {
+        $activity->clearCategories();
 
         foreach ($categories as $category) {
             // Finds category entity and adds it to the activity

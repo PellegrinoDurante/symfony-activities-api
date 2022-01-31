@@ -69,10 +69,15 @@ class Activity
     private Collection $users;
 
     /**
-     * @ORM\ManyToMany(targetEntity=Category::class, mappedBy="activities")
+     * @ORM\ManyToMany(targetEntity=Category::class, inversedBy="activities")
      * @Groups({"activity"})
      */
     private Collection $categories;
+
+    /**
+     * @ORM\OneToOne(targetEntity=ActivityMedia::class)
+     */
+    private ?ActivityMedia $media;
 
     #[Pure]
     public function __construct()
@@ -220,7 +225,6 @@ class Activity
     {
         if (!$this->categories->contains($category)) {
             $this->categories[] = $category;
-            $category->addActivity($this);
         }
 
         return $this;
@@ -229,6 +233,24 @@ class Activity
     public function removeCategory(Category $category): self
     {
         $this->categories->removeElement($category);
+        return $this;
+    }
+
+    public function clearCategories(): self
+    {
+        $this->categories->clear();
+        return $this;
+    }
+
+    public function getMedia(): ?ActivityMedia
+    {
+        return $this->media;
+    }
+
+    public function setMedia(?ActivityMedia $media): self
+    {
+        $this->media = $media;
+
         return $this;
     }
 }
